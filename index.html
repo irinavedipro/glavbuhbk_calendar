@@ -3,40 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>БК Главбух: Календарь уплаты налогов и отчетности 2026</title>
-    <!-- Подключение Tailwind CSS -->
+    <title>БК Главбух: Календарь 2026</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключение React и Babel для работы JSX в браузере -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #f8f3f0;
+            overflow-x: hidden;
         }
-
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        @keyframes confetti1 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(-20px, -20px) scale(0); opacity: 0; } }
-        @keyframes confetti2 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(20px, -20px) scale(0); opacity: 0; } }
-        @keyframes confetti3 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(-15px, 20px) scale(0); opacity: 0; } }
-        @keyframes confetti4 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(15px, 20px) scale(0); opacity: 0; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
-        .animate-confetti-1 { animation: confetti1 0.5s ease-out forwards; }
-        .animate-confetti-2 { animation: confetti2 0.5s ease-out forwards; }
-        .animate-confetti-3 { animation: confetti3 0.5s ease-out forwards; }
-        .animate-confetti-4 { animation: confetti4 0.5s ease-out forwards; }
-
-        @keyframes slideUpFade {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, 20px); }
+            15% { opacity: 1; transform: translate(-50%, 0); }
+            85% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
         }
-        .animate-slide-up {
-            animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .toast {
+            position: fixed;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d2d2d;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            white-space: nowrap;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+            animation: fadeInOut 3s forwards;
         }
     </style>
 </head>
@@ -44,410 +52,318 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useMemo, useRef } = React;
 
-        // --- ИКОНКИ (SVG) ---
-        const CalendarIcon = (props) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
+        // Логотип БК Главбух (черный круг над коричневым полукругом)
+        const LogoIcon = () => (
+            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="35" r="15" fill="#1a1a1a" />
+                <path d="M15 55C15 55 15 85 50 85C85 85 85 55 85 55H15Z" fill="#c05a36" />
             </svg>
         );
 
-        const CheckCircleIcon = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-        );
-
-        const CloseIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        );
-
-        const ChevronDownIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-        );
-
-        const ChevronUpIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
+        const CalendarIcon = () => (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         );
 
         const ShieldIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         );
 
-        const SunIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-            </svg>
+        const ChevronIcon = ({ side }) => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={side === 'left' ? 'rotate-180' : ''}><polyline points="9 18 15 12 9 6"></polyline></svg>
         );
 
-        const MoonIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
+        const CloseIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         );
 
-        const TimerIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-        );
+        const Pattern = ({ type }) => {
+            if (type === 1) return (
+                <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
+                    <path d="M0 150 A 50 50 0 0 1 100 150" fill="#c05a36" />
+                    <circle cx="50" cy="80" r="20" fill="#1a1a1a" />
+                </svg>
+            );
+            if (type === 2) return (
+                <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
+                    <circle cx="50" cy="0" r="60" fill="none" stroke="#c05a36" strokeWidth="15" />
+                    <circle cx="50" cy="0" r="30" fill="none" stroke="#1a1a1a" strokeWidth="10" />
+                </svg>
+            );
+            return (
+                <svg className="absolute inset-0 w-full h-full opacity-25" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
+                    <rect x="0" y="75" width="100" height="75" fill="#c05a36" />
+                    <circle cx="50" cy="75" r="35" fill="#1a1a1a" />
+                </svg>
+            );
+        };
 
-        const Pattern1 = () => (
-            <svg className="absolute inset-0 w-full h-full opacity-20 dark:opacity-40" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
-                <path d="M0 150 A 50 50 0 0 1 100 150" fill="#c05a36" />
-                <circle cx="50" cy="80" r="20" fill="#1a1a1a" />
-            </svg>
-        );
-
-        const Pattern2 = () => (
-            <svg className="absolute inset-0 w-full h-full opacity-20 dark:opacity-40" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
-                <circle cx="50" cy="0" r="60" fill="none" stroke="#c05a36" strokeWidth="15" />
-                <circle cx="50" cy="0" r="30" fill="none" stroke="#1a1a1a" strokeWidth="10" />
-            </svg>
-        );
-
-        const Pattern3 = () => (
-            <svg className="absolute inset-0 w-full h-full opacity-15 dark:opacity-30" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
-                <rect x="0" y="75" width="100" height="75" fill="#c05a36" />
-                <circle cx="50" cy="75" r="35" fill="#1a1a1a" />
-            </svg>
-        );
-
-        const Pattern4 = () => (
-            <svg className="absolute inset-0 w-full h-full opacity-20 dark:opacity-40" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
-                <path d="M-20 50 Q 50 120 120 50" fill="none" stroke="#c05a36" strokeWidth="12" />
-                <path d="M-20 80 Q 50 150 120 80" fill="none" stroke="#1a1a1a" strokeWidth="8" />
-            </svg>
-        );
-
-        // --- БАЗА ДАННЫХ ---
+        // ПОЛНАЯ ИСТОРИЧЕСКАЯ БАЗА СОБЫТИЙ 2026
         const taxCalendarData = {
             0: [ // январь
-                { id: 'j1', date: 9, monthIdx: 0, day: 'пятница', type: 'Платеж', title: "НДФЛ", desc: "Уплата налога, удержанного за период 23.12.2025 – 31.12.2025", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] },
-                { id: 'j_travm', date: 15, monthIdx: 0, day: 'четверг', type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за декабрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ПСН', 'ЕСХН'] },
-                { id: 'j_nds_decl', date: 26, monthIdx: 0, day: 'понедельник', type: 'Отчетность', title: "Декларация по НДС", desc: "Сдача декларации по НДС за 4 квартал 2025 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
-                { id: 'j_ausn', date: 26, monthIdx: 0, day: 'понедельник', type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за декабрь 2025 года.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
-                { id: 'j2', date: 26, monthIdx: 0, day: 'понедельник', type: 'Отчетность', title: "ЕФС-1, Уведомления ЕНП", desc: "Сдача РСВ за год (включая ОПС, ОМС, ОСС), ЕФС-1 (раздел 2). Подача уведомлений по налогам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'j_nds_pay', date: 28, monthIdx: 0, day: 'среда', type: 'Платеж', title: "Уплата НДС", desc: "Уплата 1/3 НДС за 4 квартал 2025 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
-                { id: 'j_npd', date: 28, monthIdx: 0, day: 'среда', type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за декабрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] },
-                { id: 'j3', date: 28, monthIdx: 0, day: 'среда', type: 'Платеж', title: "Единый налоговый платеж", desc: "Уплата регулярных налогов и страховых взносов (ОПС, ОМС, ОСС).", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] }
+                { id: 'j1', date: 9, type: 'Платеж', title: "НДФЛ", desc: "Уплата налога, удержанного за период 23.12.2025 – 31.12.2025.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] },
+                { id: 'j2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за декабрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ПСН', 'ЕСХН'] },
+                { id: 'j3', date: 26, type: 'Отчетность', title: "Декларация по НДС", desc: "Сдача декларации по НДС за 4 квартал 2025 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
+                { id: 'j4', date: 26, type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за декабрь 2025 года.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
+                { id: 'j5', date: 26, type: 'Отчетность', title: "ЕФС-1, Уведомления ЕНП", desc: "Сдача РСВ за год, ЕФС-1 (раздел 2). Подача уведомлений по налогам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'j6', date: 28, type: 'Платеж', title: "Единый налоговый платеж", desc: "Уплата регулярных налогов и страховых взносов (ОПС, ОМС, ОСС).", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'j7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за декабрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             1: [ // февраль
-                { id: 'f1', date: 5, monthIdx: 1, day: 'четверг', type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление об исчисленных суммах за период 23.01 – 31.01", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'f_travm', date: 16, monthIdx: 1, day: 'понедельник', type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'f2', date: 25, monthIdx: 1, day: 'среда', type: 'Отчетность', title: "Персонифицированные сведения", desc: "Представление в налоговую сведений о физических лицах.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'f_vzn', date: 25, monthIdx: 1, day: 'среда', type: 'Отчетность', title: "Уведомление по взносам", desc: "Уведомление по страховым взносам (ОПС, ОМС, ОСС) за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'f3', date: 25, monthIdx: 1, day: 'среда', type: 'Отчетность', title: "6-НДФЛ за год", desc: "Подача годового расчета 6-НДФЛ.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'f_ausn', date: 25, monthIdx: 1, day: 'среда', type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за январь.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
-                { id: 'f_nds_pay', date: 28, monthIdx: 1, day: 'суббота', type: 'Платеж', title: "Уплата НДС", desc: "Уплата 1/3 НДС за 4 квартал 2025 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
-                { id: 'f_npd', date: 28, monthIdx: 1, day: 'суббота', type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за январь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] },
-                { id: 'f4', date: 28, monthIdx: 1, day: 'суббота', type: 'Платеж', title: "Уплата по ЕНП", desc: "Перечисление НДФЛ, страховых взносов (ОПС, ОМС, ОСС), имущественных налогов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] }
+                { id: 'f1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление об исчисленных суммах за период 23.01 – 31.01.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'f2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f3', date: 25, type: 'Отчетность', title: "6-НДФЛ за год", desc: "Подача годового расчета 6-НДФЛ за 2025 год.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'f4', date: 25, type: 'Отчетность', title: "Персонифицированные сведения", desc: "Представление в налоговую сведений о физических лицах за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f5', date: 25, type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за январь.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
+                { id: 'f6', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Перечисление НДФЛ, страховых взносов (ОПС, ОМС, ОСС), имущественных налогов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за январь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             2: [ // март
-                { id: 'm1', date: 5, monthIdx: 2, day: 'четверг', type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.02 – 28.02", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'm_travm', date: 16, monthIdx: 2, day: 'понедельник', type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за февраль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'm2', date: 25, monthIdx: 2, day: 'среда', type: 'Отчетность', title: "Налог на прибыль", desc: "Сдача годовой декларации по налогу на прибыль.", org: ['ООО'], sys: ['ОСНО'] },
-                { id: 'm_vzn', date: 25, monthIdx: 2, day: 'среда', type: 'Отчетность', title: "Уведомление по взносам", desc: "Уведомление по страховым взносам (ОПС, ОМС, ОСС) за февраль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'm3', date: 25, monthIdx: 2, day: 'среда', type: 'Отчетность', title: "Декларация УСН", desc: "Годовая декларация УСН для организаций.", org: ['ООО'], sys: ['УСН'] },
-                { id: 'm_eshn', date: 25, monthIdx: 2, day: 'среда', type: 'Отчетность', title: "Декларация ЕСХН", desc: "Годовая декларация по единому сельскохозяйственному налогу.", org: ['ООО', 'ИП'], sys: ['ЕСХН'] },
-                { id: 'm_ausn', date: 25, monthIdx: 2, day: 'среда', type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за февраль.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
-                { id: 'm_npd', date: 30, monthIdx: 2, day: 'понедельник', type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за февраль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] },
-                { id: 'm_nds_pay', date: 30, monthIdx: 2, day: 'понедельник', type: 'Платеж', title: "Уплата НДС", desc: "Уплата 1/3 НДС за 4 квартал 2025 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
-                { id: 'm4', date: 30, monthIdx: 2, day: 'понедельник', type: 'Платеж', title: "Уплата ЕНП", desc: "Ежемесячный платеж ЕНП (включая взносы ОПС, ОМС, ОСС). Уплата налога УСН для ООО. Годовой платеж ЕСХН.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] }
+                { id: 'm1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.02 – 28.02.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'm2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за февраль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'm3', date: 25, type: 'Отчетность', title: "Налог на прибыль", desc: "Сдача годовой декларации по налогу на прибыль за 2025 год.", org: ['ООО'], sys: ['ОСНО'] },
+                { id: 'm4', date: 25, type: 'Отчетность', title: "Декларация УСН (ООО)", desc: "Годовая декларация УСН для организаций за 2025 год.", org: ['ООО'], sys: ['УСН'] },
+                { id: 'm5', date: 25, type: 'Отчетность', title: "Декларация ЕСХН", desc: "Годовая декларация по единому сельскохозяйственному налогу.", org: ['ООО', 'ИП'], sys: ['ЕСХН'] },
+                { id: 'm6', date: 30, type: 'Платеж', title: "Уплата ЕНП", desc: "Ежемесячный платеж ЕНП. Уплата налога УСН для ООО. Годовой платеж ЕСХН.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'm7', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за февраль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
-            // ... (аналогичные данные для остальных месяцев года)
+            3: [ // апрель
+                { id: 'a1', date: 6, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.03 – 31.03.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'a2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за март.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'a3', date: 27, type: 'Отчетность', title: "Декларация по НДС", desc: "Сдача декларации по НДС за 1 квартал 2026 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
+                { id: 'a4', date: 27, type: 'Отчетность', title: "Декларация УСН (ИП)", desc: "Годовая декларация УСН для ИП за 2025 год.", org: ['ИП'], sys: ['УСН'] },
+                { id: 'a5', date: 27, type: 'Отчетность', title: "Квартальная отчетность", desc: "Сдача 6-НДФЛ, РСВ за 1 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'a6', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Квартальные авансовые платежи. Уплата УСН для ИП за год.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'a7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за март.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            4: [ // май
+                { id: 'ma1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.04 – 30.04.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'ma2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за апрель.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ma3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомления по НДФЛ и страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ma4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ma5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за апрель.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            5: [ // июнь
+                { id: 'ju1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.05 – 31.05.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'ju2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за май.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ju3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ju4', date: 29, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж (перенос с выходного дня).", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ju5', date: 29, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за май.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            6: [ // июль
+                { id: 'jl1', date: 6, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.06 – 30.06.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'jl2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за июнь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl3', date: 27, type: 'Отчетность', title: "Отчетность за полугодие", desc: "Сдача 6-НДФЛ, РСВ, декларации по НДС за 2 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl4', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Авансовые платежи за 2 квартал (налог на прибыль, УСН). Страховые взносы за июнь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за июнь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            7: [ // август
+                { id: 'au1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.07 – 31.07.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'au2', date: 17, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за июль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'au3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'au4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'au5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за июль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            8: [ // сентябрь
+                { id: 'se1', date: 7, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.08 – 31.08.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'se2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за август.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'se3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'se4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'se5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за август.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            9: [ // октябрь
+                { id: 'oc1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.09 – 30.09.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'oc2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за сентябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'oc3', date: 26, type: 'Отчетность', title: "Отчетность за 9 месяцев", desc: "Сдача 6-НДФЛ, РСВ, декларации по НДС за 3 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'oc4', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Авансовые платежи за 3 квартал. Страховые взносы за сентябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'oc5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за сентябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            10: [ // ноябрь
+                { id: 'no1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.10 – 31.10.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'no2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за октябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'no3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'no4', date: 30, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж за октябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'no5', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за октябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+            ],
+            11: [ // декабрь
+                { id: 'de1', date: 7, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.11 – 30.11.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'de2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за ноябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'de3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'de4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж. Уплата НДФЛ за период с 23.11 по 22.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'de5', date: 31, type: 'Отчетность', title: "НДФЛ за декабрь", desc: "Уведомление и уплата НДФЛ за период с 23.12 по 31.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] }
+            ]
         };
 
-        const months = [
-            "январь", "февраль", "март", "апрель", "май", "июнь", 
-            "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"
-        ];
+        const months = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
 
-        const usefulMaterials = [
-            { id: 1, title: 'КРАШ ТЕСТ для бизнеса', type: 'Интерактив', pattern: 1, url: 'https://t.me/bk_glavbuh_helper_bot?start=crash_test' },
+        const materials = [
+            { id: 1, title: 'КРАШ ТЕСТ бизнеса', type: 'Интерактив', pattern: 1, url: 'https://t.me/bk_glavbuh_helper_bot?start=crash_test' },
             { id: 2, title: '1С-гороскоп', type: 'Бот', pattern: 2, url: 'https://t.me/bk_glavbuh_helper_bot?start=horoscope' },
-            { id: 3, title: 'Вычет через работодателя', type: 'Чек-лист', pattern: 3, url: 'https://t.me/bk_glavbuh_helper_bot?start=vychet_2026' },
-            { id: 4, title: 'Работа с самозанятыми', type: 'Чек-лист', pattern: 4, url: 'https://t.me/bk_glavbuh_helper_bot?start=samozanyatie' },
-            { id: 6, title: 'Изменения 2026: план', type: 'План', pattern: 2, url: 'https://t.me/bk_glavbuh_helper_bot?start=plan_2026' },
-            { id: 7, title: 'Ключевые изменения НДС', type: 'Схема', pattern: 3, url: 'https://t.me/bk_glavbuh_helper_bot?start=nds_schema' },
-            { id: 8, title: 'НДС в 1С: розница', type: 'Гайд', pattern: 4, url: 'https://t.me/bk_glavbuh_helper_bot?start=nds_1c' }
+            { id: 3, title: 'Вычет через работу', type: 'Чек-лист', pattern: 3, url: 'https://t.me/bk_glavbuh_helper_bot?start=vychet_2026' },
+            { id: 4, title: 'Работа с самозанятыми', type: 'Чек-лист', pattern: 1, url: 'https://t.me/bk_glavbuh_helper_bot?start=samozanyatie' },
+            { id: 5, title: 'План изменений 2026', type: 'План', pattern: 2, url: 'https://t.me/bk_glavbuh_helper_bot?start=plan_2026' },
+            { id: 6, title: 'Схема НДС 2026', type: 'Схема', pattern: 3, url: 'https://t.me/bk_glavbuh_helper_bot?start=nds_schema' },
+            { id: 7, title: 'НДС в 1С: розница', type: 'Гайд', pattern: 1, url: 'https://t.me/bk_glavbuh_helper_bot?start=nds_1c' }
         ];
-
-        const renderPattern = (type) => {
-            switch(type) {
-                case 1: return <Pattern1 />;
-                case 2: return <Pattern2 />;
-                case 3: return <Pattern3 />;
-                case 4: return <Pattern4 />;
-                default: return <Pattern1 />;
-            }
-        };
-
-        const getDaysWord = (days) => {
-            const lastDigit = days % 10;
-            const lastTwoDigits = days % 100;
-            if (lastTwoDigits >= 11 && lastTwoDigits <= 14) return 'дней';
-            if (lastDigit === 1) return 'день';
-            if (lastDigit >= 2 && lastDigit <= 4) return 'дня';
-            return 'дней';
-        };
 
         function App() {
-            const [selectedMonth, setSelectedMonth] = useState(1); // февраль по умолчанию
-            const [expandedId, setExpandedId] = useState(null);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [auditForm, setAuditForm] = useState({ type: 'ООО', sys: 'УСН' });
-            const [isDarkMode, setIsDarkMode] = useState(false);
-            const [filterOrg, setFilterOrg] = useState('Все');
-            const [filterSys, setFilterSys] = useState('Все');
-            const [completedTasks, setCompletedTasks] = useState([]);
-            const [animatingTask, setAnimatingTask] = useState(null);
+            const [month, setMonth] = useState(1); // Февраль по умолчанию
+            const [org, setOrg] = useState('Все');
+            const [sys, setSys] = useState('Все');
+            const [openId, setOpenId] = useState(null);
+            const [modal, setModal] = useState(false);
+            const [toast, setToast] = useState(null);
+            const scrollRef = useRef(null);
 
-            const handleOrgFilter = (org) => {
-                setFilterOrg(org);
-                if (org === 'Самозанятый') setFilterSys('НПД');
-                else if (org === 'ООО' && (filterSys === 'ПСН' || filterSys === 'НПД')) setFilterSys('Все');
-            };
-
-            const handleSysFilter = (sys) => {
-                setFilterSys(sys);
-                if (sys === 'НПД' && filterOrg === 'ООО') setFilterOrg('Самозанятый');
-                else if (sys === 'ПСН' && filterOrg === 'ООО') setFilterOrg('ИП');
-            };
-
-            const handleAuditOrgSelect = (type) => {
-                let newSys = auditForm.sys;
-                if (type === 'Самозанятый') newSys = 'НПД';
-                else if (type === 'ООО' && (newSys === 'ПСН' || newSys === 'НПД')) newSys = 'УСН';
-                setAuditForm({ type, sys: newSys });
-            };
-
-            const handleAuditSysSelect = (sys) => {
-                let newType = auditForm.type;
-                if (sys === 'НПД' && newType === 'ООО') newType = 'Самозанятый';
-                else if (sys === 'ПСН' && newType === 'ООО') newType = 'ИП';
-                setAuditForm({ type: newType, sys });
-            };
-
-            const nextDeadline = useMemo(() => {
-                const today = new Date(2026, 1, 23); // Тестовая дата
-                today.setHours(0, 0, 0, 0);
-                let closest = null;
-                let minDiff = Infinity;
-                Object.values(taxCalendarData).flat().forEach(event => {
-                    if (filterOrg !== 'Все' && !event.org.includes(filterOrg)) return;
-                    if (filterSys !== 'Все' && !event.sys.includes(filterSys)) return;
-                    const eventDate = new Date(2026, event.monthIdx, event.date);
-                    const diffTime = eventDate.getTime() - today.getTime();
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 0 && diffDays < minDiff) {
-                        minDiff = diffDays;
-                        closest = { ...event, diffDays };
-                    }
-                });
-                return closest;
-            }, [filterOrg, filterSys]);
-
-            const currentEvents = useMemo(() => {
-                const events = taxCalendarData[selectedMonth] || [];
-                return events.filter(event => {
-                    const matchOrg = filterOrg === 'Все' || event.org.includes(filterOrg);
-                    const matchSys = filterSys === 'Все' || event.sys.includes(filterSys);
+            const events = useMemo(() => {
+                const currentMonthEvents = taxCalendarData[month] || [];
+                return currentMonthEvents.filter(e => {
+                    const matchOrg = org === 'Все' || e.org.includes(org);
+                    const matchSys = sys === 'Все' || e.sys.includes(sys);
                     return matchOrg && matchSys;
                 });
-            }, [selectedMonth, filterOrg, filterSys]);
+            }, [month, org, sys]);
 
-            const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+            const showToast = (text) => {
+                setToast(text);
+                setTimeout(() => setToast(null), 3000);
+            };
 
-            const toggleComplete = (e, id) => {
-                e.stopPropagation();
-                if (completedTasks.includes(id)) {
-                    setCompletedTasks(prev => prev.filter(taskId => taskId !== id));
-                } else {
-                    setCompletedTasks(prev => [...prev, id]);
-                    setAnimatingTask(id);
-                    setTimeout(() => setAnimatingTask(null), 600);
+            const scroll = (direction) => {
+                if (scrollRef.current) {
+                    const { scrollLeft } = scrollRef.current;
+                    const scrollTo = direction === 'left' ? scrollLeft - 220 : scrollLeft + 220;
+                    scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
                 }
             };
 
-            const handleFormSubmit = (e) => {
-                e.preventDefault();
-                const text = `Здравствуйте, хочу налоговый аудит! Мои вводные данные: форма — ${auditForm.type}, система — ${auditForm.sys}.`;
-                window.open(`https://t.me/glavbuhbk?text=${encodeURIComponent(text)}`, '_blank');
-                setIsModalOpen(false);
+            const handleClose = () => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.close();
+                }
             };
 
             return (
-                <div className={`${isDarkMode ? 'dark' : ''}`}>
-                    <div className="min-h-screen bg-[#f5ece5] dark:bg-[#121212] font-sans text-[#1a1a1a] dark:text-[#f3f4f6] pb-24 transition-colors duration-300">
-                        
-                        {/* Header */}
-                        <header className="bg-white dark:bg-[#1e1e1e] px-6 py-5 shadow-sm rounded-b-3xl relative z-10 transition-colors duration-300">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 flex flex-col items-center justify-center bg-white dark:bg-[#2a2a2a] rounded-lg">
-                                        <div className="w-4 h-4 rounded-full bg-[#1a1a1a] dark:bg-white mb-1 transition-colors"></div>
-                                        <div className="w-8 h-4 rounded-t-none rounded-b-full bg-[#c05a36]"></div>
-                                    </div>
-                                    <h1 className="text-xl font-bold tracking-tight">БК Главбух</h1>
+                <div className="max-w-md mx-auto min-h-screen pb-36 shadow-2xl bg-[#f8f3f0] relative">
+                    {/* Шапка */}
+                    <header className="bg-white p-6 rounded-b-[44px] shadow-sm border-b border-orange-50 sticky top-0 z-30">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-sm">
+                                    <LogoIcon />
                                 </div>
-                                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors">
-                                    {isDarkMode ? <SunIcon /> : <MoonIcon />}
-                                </button>
+                                <span className="font-extrabold tracking-tight text-gray-800 uppercase text-xs">БК Главбух</span>
                             </div>
-                            <div className="mt-6 mb-4">
-                                <p className="text-sm font-semibold text-[#c05a36] uppercase tracking-wider mb-1">Ваш персональный помощник</p>
-                                <h2 className="text-3xl font-bold leading-tight">Календарь уплаты налогов<br/>и отчетности 2026</h2>
-                            </div>
-                            <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                                <div className="flex gap-2">
-                                    {['Все', 'ООО', 'ИП', 'Самозанятый'].map(org => (
-                                        <button key={org} onClick={() => handleOrgFilter(org)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterOrg === org ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-black shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
-                                            {org === 'Все' ? 'Любая форма' : org}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Все', 'ОСНО', 'УСН', 'АУСН', 'ПСН', 'НПД', 'ЕСХН'].map(sys => (
-                                        <button key={sys} onClick={() => handleSysFilter(sys)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterSys === sys ? 'bg-[#c05a36] text-white shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
-                                            {sys === 'Все' ? 'Любая система' : sys}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </header>
-
-                        {/* Timer */}
-                        {nextDeadline && (
-                            <div className="px-4 mt-6">
-                                <div className="bg-gradient-to-r from-[#c05a36] to-[#a64d2d] rounded-2xl p-4 text-white shadow-lg flex items-center justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-white/80 text-xs font-bold uppercase tracking-wider mb-1">
-                                            <TimerIcon />
-                                            <span>Ближайший дедлайн</span>
-                                        </div>
-                                        <div className="font-bold text-lg">{nextDeadline.date} {months[nextDeadline.monthIdx]}</div>
-                                    </div>
-                                    <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm text-center">
-                                        <div className="text-2xl font-black leading-none">{nextDeadline.diffDays}</div>
-                                        <div className="text-[10px] font-bold uppercase tracking-wider">{getDaysWord(nextDeadline.diffDays)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Stories / Knowledge Base */}
-                        <div className="mt-8 px-4">
-                            <h3 className="text-lg font-bold mb-3">База знаний</h3>
-                            <div className="flex overflow-x-auto hide-scrollbar gap-4 pb-6 pt-2 snap-x">
-                                {usefulMaterials.map((item, index) => (
-                                    <a key={item.id} href={item.url} target="_blank" className="group relative snap-center flex-shrink-0 w-[140px] h-[190px] bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300 transform hover:-translate-y-2 animate-slide-up" style={{ animationDelay: `${index * 80}ms` }}>
-                                        <div className="absolute inset-0 bg-gradient-to-br from-[#f5ece5]/40 to-transparent dark:from-[#2a2a2a]/40 z-0"></div>
-                                        <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110 z-0">{renderPattern(item.pattern)}</div>
-                                        <div className="relative z-20 p-4 flex flex-col h-full justify-between">
-                                            <div className="inline-block px-2.5 py-1.5 bg-white/95 dark:bg-black/80 backdrop-blur-md rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-[#c05a36] dark:text-[#d36b46] w-max shadow-sm">{item.type}</div>
-                                            <div className="text-sm font-bold leading-tight text-gray-900 dark:text-white bg-white/85 dark:bg-[#1a1a1a]/80 backdrop-blur-md p-2.5 rounded-xl">{item.title}</div>
-                                        </div>
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Months Nav */}
-                        <div className="mt-4 px-4 overflow-x-auto hide-scrollbar flex gap-3 pb-4 snap-x">
-                            {months.map((month, index) => (
-                                <button key={month} onClick={() => setSelectedMonth(index)} className={`snap-center whitespace-nowrap px-6 py-3 rounded-full text-sm font-medium transition-all ${selectedMonth === index ? "bg-[#1a1a1a] dark:bg-white text-white dark:text-black shadow-md" : "bg-white dark:bg-[#1e1e1e] text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-800"}`}>{month}</button>
-                            ))}
-                        </div>
-
-                        {/* Events List */}
-                        <main className="px-4 mt-2 space-y-3">
-                            {currentEvents.length > 0 ? currentEvents.map((event) => {
-                                const isCompleted = completedTasks.includes(event.id);
-                                return (
-                                    <div key={event.id} className={`rounded-2xl shadow-sm border overflow-hidden transition-all ${isCompleted ? 'bg-green-50 dark:bg-green-900/20 border-green-100' : 'bg-white dark:bg-[#1e1e1e] border-gray-50 dark:border-gray-800'}`}>
-                                        <div onClick={() => toggleExpand(event.id)} className="p-4 flex gap-4 items-start cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
-                                            <button onClick={(e) => toggleComplete(e, event.id)} className={`flex-shrink-0 mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors relative ${isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent'}`}>
-                                                <CheckCircleIcon className="w-4 h-4" />
-                                                {animatingTask === event.id && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-confetti-1"></span><span className="absolute w-2 h-2 bg-red-400 rounded-full animate-confetti-2"></span></div>}
-                                            </button>
-                                            <div className="flex-1">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${event.type === 'Отчетность' ? 'bg-orange-100 text-[#c05a36]' : 'bg-gray-100 text-gray-600'}`}>{event.type}</span>
-                                                <h3 className={`font-bold text-sm leading-snug mt-1 transition-colors ${isCompleted ? 'text-green-800 dark:text-green-400 line-through opacity-70' : ''}`}>{event.title}</h3>
-                                            </div>
-                                            <div className="pt-2 text-gray-400">{expandedId === event.id ? <ChevronUpIcon /> : <ChevronDownIcon />}</div>
-                                        </div>
-                                        {expandedId === event.id && (
-                                            <div className="px-4 pb-4 pt-1 pl-14">
-                                                <div className="flex items-center gap-2 text-xs text-gray-400 mb-2"><CalendarIcon width="14" height="14" /><span>{event.day}, {event.date} {months[selectedMonth]}</span></div>
-                                                <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{event.desc}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            }) : (
-                                <div className="text-center py-12 px-6 bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-sm mt-4 border border-gray-50 dark:border-gray-800">
-                                    <h3 className="text-lg font-bold mb-2">Задачи отсутствуют</h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm">В этом месяце все свободно.</p>
-                                </div>
-                            )}
-                        </main>
-
-                        {/* CTA Button */}
-                        <div className="fixed bottom-6 left-0 right-0 px-4 z-40">
-                            <button onClick={() => setIsModalOpen(true)} className="w-full bg-[#1a1a1a] dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                                <ShieldIcon /><span>Заказать налоговый аудит</span>
+                            <button onClick={handleClose} className="p-2 text-gray-400 hover:text-orange-600 transition-colors bg-gray-50 rounded-full">
+                                <CloseIcon />
                             </button>
                         </div>
+                        <h1 className="text-2xl font-black mb-6 leading-tight text-gray-900">Календарь 2026</h1>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {['Все', 'ООО', 'ИП', 'Самозанятый'].map(v => (
+                                <button key={v} onClick={() => { setOrg(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${org === v ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {['Все', 'ОСНО', 'УСН', 'ПСН', 'НПД', 'АУСН', 'ЕСХН'].map(v => (
+                                <button key={v} onClick={() => { setSys(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sys === v ? 'bg-[#c05a36] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
+                            ))}
+                        </div>
+                    </header>
 
-                        {/* Audit Modal */}
-                        {isModalOpen && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                                <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-md rounded-3xl p-6 relative">
-                                    <button onClick={() => setIsModalOpen(false)} className="absolute right-4 top-4 text-gray-400"><CloseIcon /></button>
-                                    <h3 className="text-2xl font-bold mb-3 leading-tight">Заявка на аудит</h3>
-                                    <form onSubmit={handleFormSubmit} className="space-y-5 mt-6">
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {['ООО', 'ИП', 'Самозанятый'].map(type => (
-                                                <button key={type} type="button" onClick={() => handleAuditOrgSelect(type)} className={`py-2 rounded-xl text-xs font-bold ${auditForm.type === type ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-800 text-gray-600'}`}>{type}</button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {['ОСНО', 'УСН', 'АУСН', 'ПСН', 'НПД', 'ЕСХН'].map(sys => (
-                                                <button key={sys} type="button" onClick={() => handleAuditSysSelect(sys)} className={`py-2 rounded-xl text-xs font-bold ${auditForm.sys === sys ? 'bg-[#c05a36] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600'}`}>{sys}</button>
-                                            ))}
-                                        </div>
-                                        <button type="submit" className="w-full bg-[#c05a36] text-white py-3.5 rounded-xl font-bold mt-2">Перейти в Telegram</button>
-                                    </form>
+                    {/* База знаний */}
+                    <section className="px-4 mt-10 relative group">
+                        <div className="flex items-center justify-between mb-5 px-2">
+                            <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-widest">База знаний</h3>
+                            <div className="hidden md:flex gap-2">
+                                <button onClick={() => scroll('left')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black">
+                                    <ChevronIcon side="left" />
+                                </button>
+                                <button onClick={() => scroll('right')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black">
+                                    <ChevronIcon side="right" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div ref={scrollRef} className="flex overflow-x-auto hide-scrollbar gap-4 pb-4 px-2 snap-x">
+                            {materials.map(m => (
+                                <a 
+                                    key={m.id} 
+                                    href={m.url} 
+                                    onClick={() => showToast('Материал отправлен в чат бот')}
+                                    className="flex-shrink-0 w-[145px] h-[195px] bg-white rounded-[36px] p-6 flex flex-col justify-between shadow-md border border-white hover:border-orange-100 transition-all active:scale-95 snap-start relative overflow-hidden group"
+                                >
+                                    <div className="z-0">
+                                        <Pattern type={m.pattern} />
+                                    </div>
+                                    <div className="relative z-10 w-9 h-9 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center">
+                                        <div className="w-3 h-3 bg-[#c05a36] rounded-full"></div>
+                                    </div>
+                                    <div className="relative z-10">
+                                        <span className="text-[9px] font-black text-[#c05a36] uppercase tracking-tighter mb-1 block">{m.type}</span>
+                                        <p className="text-[12px] font-bold leading-tight text-gray-900">{m.title}</p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-2 text-center font-bold uppercase tracking-widest md:hidden">Смахните вправо →</p>
+                    </section>
+
+                    {/* Месяцы */}
+                    <nav className="flex overflow-x-auto hide-scrollbar gap-3 px-4 mt-10">
+                        {months.map((m, i) => (
+                            <button key={m} onClick={() => { setMonth(i); setOpenId(null); }} className={`px-6 py-3 rounded-full text-[11px] font-black uppercase tracking-widest flex-shrink-0 transition-all ${month === i ? 'bg-black text-white shadow-xl scale-105' : 'bg-white text-gray-400 border border-transparent hover:border-gray-200'}`}>{m}</button>
+                        ))}
+                    </nav>
+
+                    {/* События */}
+                    <main className="px-4 mt-8 space-y-4">
+                        {events.length > 0 ? events.map(e => (
+                            <div key={e.id} className="bg-white rounded-[32px] p-6 shadow-sm border border-white hover:shadow-md transition-all animate-up" onClick={() => setOpenId(openId === e.id ? null : e.id)}>
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-[10px] font-black text-[#c05a36] uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-lg">{e.type}</span>
+                                    <span className="text-[11px] font-bold text-gray-400">{e.date} {months[month]}</span>
                                 </div>
+                                <h4 className="font-bold text-[15px] text-gray-900 leading-snug">{e.title}</h4>
+                                {openId === e.id && <p className="mt-4 text-[13px] text-gray-500 leading-relaxed border-t border-gray-50 pt-4">{e.desc}</p>}
+                            </div>
+                        )) : (
+                            <div className="text-center py-20 opacity-30">
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Событий нет</p>
                             </div>
                         )}
+                    </main>
+
+                    {/* Заявка */}
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full px-6 max-w-md z-40">
+                        <button onClick={() => setModal(true)} className="w-full bg-black text-white py-5 rounded-[28px] font-black uppercase tracking-[0.25em] text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                            <ShieldIcon /> Налоговый аудит
+                        </button>
                     </div>
+
+                    {/* Модалка */}
+                    {modal && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-end">
+                            <div className="bg-white w-full rounded-t-[52px] p-10 animate-up max-w-md mx-auto shadow-2xl relative">
+                                <button onClick={() => setModal(false)} className="absolute right-8 top-10 text-gray-300 hover:text-black">
+                                    <CloseIcon />
+                                </button>
+                                <div className="w-14 h-1.5 bg-gray-100 rounded-full mx-auto mb-10"></div>
+                                <h3 className="text-2xl font-black text-gray-900 mb-3 uppercase tracking-tight">Заявка на аудит</h3>
+                                <p className="text-[14px] text-gray-400 mb-10 leading-relaxed">Проанализируем ваш бизнес и найдем легальные способы оптимизации.</p>
+                                <button onClick={() => { window.open('https://t.me/glavbuhbk', '_blank'); showToast('Чат открыт!'); }} className="w-full bg-[#c05a36] text-white py-5 rounded-3xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-orange-100 mb-4 transition-transform active:scale-95">Написать эксперту</button>
+                                <button onClick={() => setModal(false)} className="w-full py-4 text-gray-400 font-bold text-[12px] uppercase tracking-widest">Вернуться назад</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Toast */}
+                    {toast && <div className="toast">{toast}</div>}
                 </div>
             );
         }
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
