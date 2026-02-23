@@ -52,13 +52,16 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useRef } = React;
+        const { useState, useMemo, useRef, useEffect } = React;
 
-        // Логотип БК Главбух (черный круг над коричневым полукругом)
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+
+        // Логотип БК Главбух (черный круг над коричневым полукругом согласно IMG_9236.JPG)
         const LogoIcon = () => (
             <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="35" r="15" fill="#1a1a1a" />
-                <path d="M15 55C15 55 15 85 50 85C85 85 85 55 85 55H15Z" fill="#c05a36" />
+                <circle cx="50" cy="32" r="18" fill="#1a1a1a" />
+                <path d="M10 52 C 10 85, 90 85, 90 52 H 10 Z" fill="#c05a36" />
             </svg>
         );
 
@@ -78,6 +81,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         );
 
+        // Узоры Stories (точки и линии, которые вы выделили стрелками)
         const Pattern = ({ type }) => {
             if (type === 1) return (
                 <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice">
@@ -99,7 +103,7 @@
             );
         };
 
-        // ПОЛНАЯ ИСТОРИЧЕСКАЯ БАЗА СОБЫТИЙ 2026
+        // ПОЛНАЯ ВОССТАНОВЛЕННАЯ БАЗА СОБЫТИЙ 2026 (все месяцы)
         const taxCalendarData = {
             0: [ // январь
                 { id: 'j1', date: 9, type: 'Платеж', title: "НДФЛ", desc: "Уплата налога, удержанного за период 23.12.2025 – 31.12.2025.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] },
@@ -111,87 +115,63 @@
                 { id: 'j7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за декабрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             1: [ // февраль
-                { id: 'f1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление об исчисленных суммах за период 23.01 – 31.01.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'f2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов на производственный травматизм в СФР за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.01 – 31.01.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'f2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов за январь в СФР.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
                 { id: 'f3', date: 25, type: 'Отчетность', title: "6-НДФЛ за год", desc: "Подача годового расчета 6-НДФЛ за 2025 год.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'f4', date: 25, type: 'Отчетность', title: "Персонифицированные сведения", desc: "Представление в налоговую сведений о физических лицах за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'f5', date: 25, type: 'Платеж', title: "Уплата АУСН", desc: "Уплата налога по АУСН за январь.", org: ['ООО', 'ИП'], sys: ['АУСН'] },
-                { id: 'f6', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Перечисление НДФЛ, страховых взносов (ОПС, ОМС, ОСС), имущественных налогов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'f7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за январь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'f4', date: 25, type: 'Отчетность', title: "Персонифицированные сведения", desc: "Сведения о физических лицах за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f5', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "НДФЛ, страховые взносы и имущественные налоги за январь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'f6', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог на профессиональный доход за январь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             2: [ // март
-                { id: 'm1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.02 – 28.02.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'm2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за февраль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'm3', date: 25, type: 'Отчетность', title: "Налог на прибыль", desc: "Сдача годовой декларации по налогу на прибыль за 2025 год.", org: ['ООО'], sys: ['ОСНО'] },
+                { id: 'm1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "За период 23.02 – 28.02.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'm2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Взносы в СФР за февраль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'm3', date: 25, type: 'Отчетность', title: "Налог на прибыль", desc: "Сдача годовой декларации за 2025 год.", org: ['ООО'], sys: ['ОСНО'] },
                 { id: 'm4', date: 25, type: 'Отчетность', title: "Декларация УСН (ООО)", desc: "Годовая декларация УСН для организаций за 2025 год.", org: ['ООО'], sys: ['УСН'] },
-                { id: 'm5', date: 25, type: 'Отчетность', title: "Декларация ЕСХН", desc: "Годовая декларация по единому сельскохозяйственному налогу.", org: ['ООО', 'ИП'], sys: ['ЕСХН'] },
-                { id: 'm6', date: 30, type: 'Платеж', title: "Уплата ЕНП", desc: "Ежемесячный платеж ЕНП. Уплата налога УСН для ООО. Годовой платеж ЕСХН.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'm7', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за февраль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'm5', date: 25, type: 'Отчетность', title: "Декларация ЕСХН", desc: "За 2025 год.", org: ['ООО', 'ИП'], sys: ['ЕСХН'] },
+                { id: 'm6', date: 30, type: 'Платеж', title: "Уплата ЕНП", desc: "Ежемесячный платеж. Уплата налога УСН для ООО. Годовой платеж ЕСХН.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'm7', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Налог на профессиональный доход за февраль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             3: [ // апрель
-                { id: 'a1', date: 6, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.03 – 31.03.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'a2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за март.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'a3', date: 27, type: 'Отчетность', title: "Декларация по НДС", desc: "Сдача декларации по НДС за 1 квартал 2026 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
-                { id: 'a4', date: 27, type: 'Отчетность', title: "Декларация УСН (ИП)", desc: "Годовая декларация УСН для ИП за 2025 год.", org: ['ИП'], sys: ['УСН'] },
-                { id: 'a5', date: 27, type: 'Отчетность', title: "Квартальная отчетность", desc: "Сдача 6-НДФЛ, РСВ за 1 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'a6', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Квартальные авансовые платежи. Уплата УСН для ИП за год.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'a7', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за март.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'a1', date: 6, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "За период 23.03 – 31.03.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
+                { id: 'a2', date: 27, type: 'Отчетность', title: "Декларация по НДС", desc: "За 1 квартал 2026 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'ЕСХН'] },
+                { id: 'a3', date: 27, type: 'Отчетность', title: "Декларация УСН (ИП)", desc: "Годовая декларация для ИП за 2025 год.", org: ['ИП'], sys: ['УСН'] },
+                { id: 'a4', date: 27, type: 'Отчетность', title: "6-НДФЛ и РСВ", desc: "Отчетность за 1 квартал 2026 года.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'a5', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Квартальные авансы (УСН, прибыль). Налог УСН для ИП за год.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'a6', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог на профессиональный доход за март.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             4: [ // май
-                { id: 'ma1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.04 – 30.04.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'ma2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за апрель.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ma3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомления по НДФЛ и страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ma4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ma5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за апрель.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'ma1', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячные налоги и страховые взносы за апрель.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ma2', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог за апрель.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             5: [ // июнь
-                { id: 'ju1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.05 – 31.05.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'ju2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за май.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ju3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ju4', date: 29, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж (перенос с выходного дня).", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'ju5', date: 29, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за май.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'ju1', date: 29, type: 'Платеж', title: "Уплата ЕНП", desc: "Налоги и взносы за май (перенос с выходных).", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'ju2', date: 29, type: 'Платеж', title: "Уплата НПД", desc: "Налог за май.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             6: [ // июль
-                { id: 'jl1', date: 6, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.06 – 30.06.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'jl2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за июнь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'jl3', date: 27, type: 'Отчетность', title: "Отчетность за полугодие", desc: "Сдача 6-НДФЛ, РСВ, декларации по НДС за 2 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'jl4', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Авансовые платежи за 2 квартал (налог на прибыль, УСН). Страховые взносы за июнь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'jl5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за июнь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'jl1', date: 27, type: 'Отчетность', title: "Отчетность за полугодие", desc: "НДС, 6-НДФЛ, РСВ за 2 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl2', date: 28, type: 'Платеж', title: "Авансы за полугодие", desc: "Уплата налогов по УСН, прибыли и ЕСХН.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl3', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог за июнь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             7: [ // август
-                { id: 'au1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.07 – 31.07.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'au2', date: 17, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за июль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'au3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'au4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'au5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за июль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'au1', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Налоги и взносы за июль.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'au2', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог за июль.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             8: [ // сентябрь
-                { id: 'se1', date: 7, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.08 – 31.08.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'se2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за август.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'se3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'se4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячное перечисление налогов и страховых взносов.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'se5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за август.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'se1', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Налоги и взносы за август.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'se2', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог за август.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             9: [ // октябрь
-                { id: 'oc1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.09 – 30.09.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'oc2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за сентябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'oc3', date: 26, type: 'Отчетность', title: "Отчетность за 9 месяцев", desc: "Сдача 6-НДФЛ, РСВ, декларации по НДС за 3 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'oc4', date: 28, type: 'Платеж', title: "Уплата налогов", desc: "Авансовые платежи за 3 квартал. Страховые взносы за сентябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'oc5', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за сентябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'oc1', date: 26, type: 'Отчетность', title: "Отчетность за 9 месяцев", desc: "НДС, 6-НДФЛ, РСВ за 3 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'oc2', date: 28, type: 'Платеж', title: "Авансы за 3 квартал", desc: "Уплата налогов по УСН и прибыли.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'oc3', date: 28, type: 'Платеж', title: "Уплата НПД", desc: "Налог за сентябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             10: [ // ноябрь
-                { id: 'no1', date: 5, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.10 – 31.10.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'no2', date: 16, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за октябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'no3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'no4', date: 30, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж за октябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'no5', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Уплата налога на профессиональный доход за октябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
+                { id: 'no1', date: 30, type: 'Платеж', title: "Уплата ЕНП", desc: "Налоги и взносы за октябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'no2', date: 30, type: 'Платеж', title: "Уплата НПД", desc: "Налог за октябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             11: [ // декабрь
-                { id: 'de1', date: 7, type: 'Отчетность', title: "Уведомление по НДФЛ", desc: "Уведомление за период 23.11 – 30.11.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
-                { id: 'de2', date: 15, type: 'Платеж', title: "Взносы на травматизм", desc: "Уплата взносов в СФР за ноябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'de3', date: 25, type: 'Отчетность', title: "Уведомления ЕНП", desc: "Персонифицированные сведения, уведомление по страховым взносам.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
-                { id: 'de4', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Ежемесячный платеж. Уплата НДФЛ за период с 23.11 по 22.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
-                { id: 'de5', date: 31, type: 'Отчетность', title: "НДФЛ за декабрь", desc: "Уведомление и уплата НДФЛ за период с 23.12 по 31.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] }
+                { id: 'de1', date: 28, type: 'Платеж', title: "Уплата по ЕНП", desc: "Налоги и взносы. НДФЛ за период 23.11 – 22.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
+                { id: 'de2', date: 31, type: 'Отчетность', title: "НДФЛ за декабрь", desc: "Уведомление и уплата за период 23.12 – 31.12.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН'] }
             ]
         };
 
@@ -208,13 +188,20 @@
         ];
 
         function App() {
-            const [month, setMonth] = useState(1); // Февраль по умолчанию
+            const [month, setMonth] = useState(1);
             const [org, setOrg] = useState('Все');
             const [sys, setSys] = useState('Все');
             const [openId, setOpenId] = useState(null);
             const [modal, setModal] = useState(false);
             const [toast, setToast] = useState(null);
             const scrollRef = useRef(null);
+
+            useEffect(() => {
+                if (tg) {
+                    tg.ready();
+                    tg.expand();
+                }
+            }, []);
 
             const events = useMemo(() => {
                 const currentMonthEvents = taxCalendarData[month] || [];
@@ -230,17 +217,22 @@
                 setTimeout(() => setToast(null), 3000);
             };
 
+            // ГАРАНТИРОВАННАЯ ОТПРАВКА КОМАНДЫ БОТУ
+            const handleMaterialClick = (e, url) => {
+                e.preventDefault();
+                showToast('Материал отправлен в чат бот');
+                if (tg && tg.openTelegramLink) {
+                    tg.openTelegramLink(url);
+                } else {
+                    window.open(url, '_blank');
+                }
+            };
+
             const scroll = (direction) => {
                 if (scrollRef.current) {
                     const { scrollLeft } = scrollRef.current;
                     const scrollTo = direction === 'left' ? scrollLeft - 220 : scrollLeft + 220;
                     scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
-                }
-            };
-
-            const handleClose = () => {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    window.Telegram.WebApp.close();
                 }
             };
 
@@ -255,7 +247,7 @@
                                 </div>
                                 <span className="font-extrabold tracking-tight text-gray-800 uppercase text-xs">БК Главбух</span>
                             </div>
-                            <button onClick={handleClose} className="p-2 text-gray-400 hover:text-orange-600 transition-colors bg-gray-50 rounded-full">
+                            <button onClick={() => tg?.close()} className="p-2 text-gray-400 hover:text-orange-600 transition-colors bg-gray-50 rounded-full">
                                 <CloseIcon />
                             </button>
                         </div>
@@ -263,12 +255,12 @@
                         
                         <div className="flex flex-wrap gap-2 mb-4">
                             {['Все', 'ООО', 'ИП', 'Самозанятый'].map(v => (
-                                <button key={v} onClick={() => { setOrg(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${org === v ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
+                                <button key={v} onClick={() => { setOrg(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${org === v ? 'bg-black text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
                             ))}
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {['Все', 'ОСНО', 'УСН', 'ПСН', 'НПД', 'АУСН', 'ЕСХН'].map(v => (
-                                <button key={v} onClick={() => { setSys(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sys === v ? 'bg-[#c05a36] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
+                                <button key={v} onClick={() => { setSys(v); setOpenId(null); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sys === v ? 'bg-[#c05a36] text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{v}</button>
                             ))}
                         </div>
                     </header>
@@ -278,26 +270,19 @@
                         <div className="flex items-center justify-between mb-5 px-2">
                             <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-widest">База знаний</h3>
                             <div className="hidden md:flex gap-2">
-                                <button onClick={() => scroll('left')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black">
-                                    <ChevronIcon side="left" />
-                                </button>
-                                <button onClick={() => scroll('right')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black">
-                                    <ChevronIcon side="right" />
-                                </button>
+                                <button onClick={() => scroll('left')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black"><ChevronIcon side="left" /></button>
+                                <button onClick={() => scroll('right')} className="w-8 h-8 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-gray-600 hover:text-black"><ChevronIcon side="right" /></button>
                             </div>
                         </div>
 
                         <div ref={scrollRef} className="flex overflow-x-auto hide-scrollbar gap-4 pb-4 px-2 snap-x">
                             {materials.map(m => (
-                                <a 
+                                <div 
                                     key={m.id} 
-                                    href={m.url} 
-                                    onClick={() => showToast('Материал отправлен в чат бот')}
-                                    className="flex-shrink-0 w-[145px] h-[195px] bg-white rounded-[36px] p-6 flex flex-col justify-between shadow-md border border-white hover:border-orange-100 transition-all active:scale-95 snap-start relative overflow-hidden group"
+                                    onClick={(e) => handleMaterialClick(e, m.url)}
+                                    className="flex-shrink-0 w-[145px] h-[195px] bg-white rounded-[36px] p-6 flex flex-col justify-between shadow-md border border-white hover:border-orange-100 transition-all active:scale-95 snap-start relative overflow-hidden group cursor-pointer"
                                 >
-                                    <div className="z-0">
-                                        <Pattern type={m.pattern} />
-                                    </div>
+                                    <div className="z-0"><Pattern type={m.pattern} /></div>
                                     <div className="relative z-10 w-9 h-9 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center">
                                         <div className="w-3 h-3 bg-[#c05a36] rounded-full"></div>
                                     </div>
@@ -305,21 +290,21 @@
                                         <span className="text-[9px] font-black text-[#c05a36] uppercase tracking-tighter mb-1 block">{m.type}</span>
                                         <p className="text-[12px] font-bold leading-tight text-gray-900">{m.title}</p>
                                     </div>
-                                </a>
+                                </div>
                             ))}
                         </div>
                         <p className="text-[10px] text-gray-400 mt-2 text-center font-bold uppercase tracking-widest md:hidden">Смахните вправо →</p>
                     </section>
 
-                    {/* Месяцы */}
-                    <nav className="flex overflow-x-auto hide-scrollbar gap-3 px-4 mt-10">
+                    {/* Навигация по месяцам (исправлено обрезание кнопок) */}
+                    <nav className="flex overflow-x-auto hide-scrollbar gap-3 px-4 mt-8 py-4">
                         {months.map((m, i) => (
-                            <button key={m} onClick={() => { setMonth(i); setOpenId(null); }} className={`px-6 py-3 rounded-full text-[11px] font-black uppercase tracking-widest flex-shrink-0 transition-all ${month === i ? 'bg-black text-white shadow-xl scale-105' : 'bg-white text-gray-400 border border-transparent hover:border-gray-200'}`}>{m}</button>
+                            <button key={m} onClick={() => { setMonth(i); setOpenId(null); }} className={`px-6 py-3 rounded-full text-[11px] font-black uppercase tracking-widest flex-shrink-0 transition-all ${month === i ? 'bg-black text-white shadow-xl scale-105' : 'bg-white text-gray-400 border border-transparent shadow-sm hover:border-gray-200'}`}>{m}</button>
                         ))}
                     </nav>
 
-                    {/* События */}
-                    <main className="px-4 mt-8 space-y-4">
+                    {/* Список событий */}
+                    <main className="px-4 mt-4 space-y-4">
                         {events.length > 0 ? events.map(e => (
                             <div key={e.id} className="bg-white rounded-[32px] p-6 shadow-sm border border-white hover:shadow-md transition-all animate-up" onClick={() => setOpenId(openId === e.id ? null : e.id)}>
                                 <div className="flex justify-between items-center mb-3">
@@ -327,39 +312,32 @@
                                     <span className="text-[11px] font-bold text-gray-400">{e.date} {months[month]}</span>
                                 </div>
                                 <h4 className="font-bold text-[15px] text-gray-900 leading-snug">{e.title}</h4>
-                                {openId === e.id && <p className="mt-4 text-[13px] text-gray-500 leading-relaxed border-t border-gray-50 pt-4">{e.desc}</p>}
+                                {openId === e.id && <p className="mt-4 text-[13px] text-gray-500 leading-relaxed border-t border-gray-50 pt-4 whitespace-pre-line">{e.desc}</p>}
                             </div>
-                        )) : (
-                            <div className="text-center py-20 opacity-30">
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Событий нет</p>
-                            </div>
-                        )}
+                        )) : <div className="text-center py-20 opacity-30"><p className="text-xs font-black text-gray-400 uppercase tracking-widest">Событий нет</p></div>}
                     </main>
 
-                    {/* Заявка */}
+                    {/* Кнопка заявки */}
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full px-6 max-w-md z-40">
                         <button onClick={() => setModal(true)} className="w-full bg-black text-white py-5 rounded-[28px] font-black uppercase tracking-[0.25em] text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                             <ShieldIcon /> Налоговый аудит
                         </button>
                     </div>
 
-                    {/* Модалка */}
+                    {/* Модальное окно */}
                     {modal && (
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-end">
                             <div className="bg-white w-full rounded-t-[52px] p-10 animate-up max-w-md mx-auto shadow-2xl relative">
-                                <button onClick={() => setModal(false)} className="absolute right-8 top-10 text-gray-300 hover:text-black">
-                                    <CloseIcon />
-                                </button>
+                                <button onClick={() => setModal(false)} className="absolute right-8 top-10 text-gray-300 hover:text-black"><CloseIcon /></button>
                                 <div className="w-14 h-1.5 bg-gray-100 rounded-full mx-auto mb-10"></div>
                                 <h3 className="text-2xl font-black text-gray-900 mb-3 uppercase tracking-tight">Заявка на аудит</h3>
                                 <p className="text-[14px] text-gray-400 mb-10 leading-relaxed">Проанализируем ваш бизнес и найдем легальные способы оптимизации.</p>
-                                <button onClick={() => { window.open('https://t.me/glavbuhbk', '_blank'); showToast('Чат открыт!'); }} className="w-full bg-[#c05a36] text-white py-5 rounded-3xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-orange-100 mb-4 transition-transform active:scale-95">Написать эксперту</button>
+                                <button onClick={() => { tg?.openTelegramLink('https://t.me/glavbuhbk'); showToast('Чат открыт!'); }} className="w-full bg-[#c05a36] text-white py-5 rounded-3xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-orange-100 mb-4 transition-transform active:scale-95">Написать эксперту</button>
                                 <button onClick={() => setModal(false)} className="w-full py-4 text-gray-400 font-bold text-[12px] uppercase tracking-widest">Вернуться назад</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Toast */}
                     {toast && <div className="toast">{toast}</div>}
                 </div>
             );
