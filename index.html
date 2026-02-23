@@ -137,7 +137,7 @@
                 { id: 'jl1', date: 1, day: 'среда', type: 'платеж', title: "Допвзносы ИП (1 %)", desc: "С доходов выше 300 000 руб. за 2025 год.", org: ['ИП'], sys: ['ОСНО', 'УСН', 'ПСН', 'ЕСХН'] },
                 { id: 'jl2', date: 6, day: 'понедельник', type: 'платеж', title: "НДФЛ (23–30 июн)", desc: "За конец июня.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
                 { id: 'jl3', date: 15, day: 'среда', type: 'платеж', title: "НДФЛ ИП за 2025", desc: "Итоговый платеж за прошлый год для ИП на ОСНО.", org: ['ИП'], sys: ['ОСНО'] },
-                { id: 'jl4', date: 28, day: 'вторник', type: 'платеж', title: "Авансы (полугодие)", desc: "УСН, прибыль, имущество, ЕСХН за 2 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН', 'ПСН'] },
+                { id: 'jl4', date: 28, day: 'вторник', type: 'платеж', title: "Авансы (полугодие)", desc: "УСН, прибыль, имущество, ЕСХН за 2 квартал.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ЕСХН', 'ПСН'] },
                 { id: 'jl5', date: 28, day: 'вторник', type: 'платеж', title: "НПД / Тур. налог", desc: "За июнь и 2 квартал.", org: ['ООО', 'ИП', 'Самозанятый'], sys: ['НПД', 'ОСНО', 'УСН'] }
             ],
             7: [ // август
@@ -165,7 +165,7 @@
                 { id: 'no4', date: 30, day: 'понедельник', type: 'платеж', title: "НПД", desc: "За октябрь.", org: ['ИП', 'Самозанятый'], sys: ['НПД'] }
             ],
             11: [ // декабрь
-                { id: 'de1', date: 1, day: 'вторник', type: 'платеж', title: "Имущ. налоги ИП", desc: "Транспортный, земельный, на имущество за 2025 год.", org: ['ИП'], sys: ['ОСНО', 'УСН', 'ПСН', 'ЕСХН'] },
+                { id: 'de1', date: 1, day: 'вторник', type: 'платеж', title: "Имущ. налоги ИП", desc: "Транспортный, земельный, на имущество физлиц за 2025 год.", org: ['ИП'], sys: ['ОСНО', 'УСН', 'ПСН', 'ЕСХН'] },
                 { id: 'de2', date: 7, day: 'понедельник', type: 'платеж', title: "НДФЛ (23–30 ноя)", desc: "За конец ноября.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'ЕСХН'] },
                 { id: 'de3', date: 15, day: 'вторник', type: 'платеж', title: "Взносы на травматизм", desc: "За ноябрь.", org: ['ООО', 'ИП'], sys: ['ОСНО', 'УСН', 'АУСН', 'ПСН', 'ЕСХН'] },
                 { id: 'de4', date: 28, day: 'понедельник', type: 'платеж', title: "Фикс. взносы ИП / ЕНП", desc: "Взносы ИП за себя за 2026 год, текущие налоги компаний.", org: ['ИП', 'ООО'], sys: ['ОСНО', 'УСН', 'ПСН', 'ЕСХН'] },
@@ -181,6 +181,8 @@
             const [filterOrg, setFilterOrg] = useState('Все');
             const [filterSys, setFilterSys] = useState('Все');
             const [expandedId, setExpandedId] = useState(null);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [auditForm, setAuditForm] = useState({ type: 'ООО', sys: 'УСН' });
 
             useEffect(() => {
                 if (tg) {
@@ -196,6 +198,33 @@
                     (filterSys === 'Все' || e.sys.includes(filterSys))
                 );
             }, [selectedMonth, filterOrg, filterSys]);
+
+            const handleAuditOrgSelect = (type) => {
+                let newSys = auditForm.sys;
+                if (type === 'Самозанятый') newSys = 'НПД';
+                else if (type === 'ООО' && (newSys === 'ПСН' || newSys === 'НПД')) newSys = 'УСН';
+                setAuditForm({ type, sys: newSys });
+            };
+
+            const handleAuditSysSelect = (sys) => {
+                let newType = auditForm.type;
+                if (sys === 'НПД' && newType === 'ООО') newType = 'Самозанятый';
+                else if (sys === 'ПСН' && newType === 'ООО') newType = 'ИП';
+                setAuditForm({ type: newType, sys });
+            };
+
+            const handleFormSubmit = (e) => {
+                e.preventDefault();
+                const text = `Здравствуйте, хочу налоговый аудит! Мои вводные данные: форма — ${auditForm.type}, система — ${auditForm.sys}.`;
+                const encodedText = encodeURIComponent(text);
+                
+                if (tg && tg.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/glavbuhbk?text=${encodedText}`);
+                } else {
+                    window.open(`https://t.me/glavbuhbk?text=${encodedText}`, '_blank');
+                }
+                setIsModalOpen(false);
+            };
 
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-44 shadow-2xl bg-[#f8f3f0] relative">
@@ -259,10 +288,83 @@
 
                     {/* Кнопка заявки */}
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full px-6 max-w-md z-40">
-                        <button onClick={() => tg?.openTelegramLink('https://t.me/glavbuhbk')} className="w-full bg-black text-white py-5 rounded-[28px] font-black uppercase tracking-[0.25em] text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                        <button onClick={() => setIsModalOpen(true)} className="w-full bg-black text-white py-5 rounded-[28px] font-black uppercase tracking-[0.25em] text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                             <ShieldIcon /> Налоговый аудит
                         </button>
                     </div>
+
+                    {/* Модальное окно */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-md rounded-3xl p-6 relative shadow-2xl animate-in fade-in zoom-in duration-200">
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="absolute right-4 top-4 text-gray-400 hover:text-black transition-colors"
+                                >
+                                    <CloseIcon />
+                                </button>
+
+                                <div>
+                                    <div className="w-12 h-12 bg-[#f8f3f0] rounded-full flex items-center justify-center mb-5 text-[#c05a36]">
+                                        <ShieldIcon />
+                                    </div>
+                                    <h3 className="text-2xl font-bold mb-3 leading-tight uppercase tracking-tight">Заявка на налоговый аудит</h3>
+                                    <p className="text-gray-600 mb-6 text-sm font-medium">
+                                        Укажите ваши данные, и мы перейдем в Telegram для обсуждения деталей.
+                                    </p>
+
+                                    <form onSubmit={handleFormSubmit} className="space-y-5">
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Форма бизнеса</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['ООО', 'ИП', 'Самозанятый'].map(type => (
+                                                    <button
+                                                        key={type}
+                                                        type="button"
+                                                        onClick={() => handleAuditOrgSelect(type)}
+                                                        className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                                                            auditForm.type === type
+                                                                ? 'bg-black text-white shadow-md'
+                                                                : 'bg-gray-50 text-gray-500 border border-gray-200'
+                                                        }`}
+                                                    >
+                                                        {type}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Система налогообложения</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['ОСНО', 'УСН', 'АУСН', 'ПСН', 'НПД', 'ЕСХН'].map(sys => (
+                                                    <button
+                                                        key={sys}
+                                                        type="button"
+                                                        onClick={() => handleAuditSysSelect(sys)}
+                                                        className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                                                            auditForm.sys === sys
+                                                                ? 'bg-[#c05a36] text-white shadow-md'
+                                                                : 'bg-gray-50 text-gray-500 border border-gray-200'
+                                                        }`}
+                                                    >
+                                                        {sys}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            type="submit"
+                                            className="w-full bg-[#c05a36] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-orange-100 transition-transform active:scale-95 mt-2"
+                                        >
+                                            Перейти в Telegram
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
